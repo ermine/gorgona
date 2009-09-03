@@ -1,0 +1,44 @@
+<gorgona>
+ <account jid='username@server'>
+  <!-- <ip>127.0.0.1</ip> -->
+  <!-- <ip>localhost</ip> -->
+  <!-- <port>5222</port> -->
+  <resource>Ocaml</resource>
+  <password>secret</password>
+
+  <!-- Uncomment this to use STARTTLS
+  <starttls/>
+  -->
+
+  <!-- Uncomment this to use COMPRESS
+  <compress/>
+  -->
+
+  <rawxml_log file='log1.log'/>
+
+  <!-- Reconnect interval in seconds. If count=0 do it infinitely -->
+  <!-- If you use NOT OWN jabber server, it is strongly recommended do not
+       do times more than 3.
+  <reconnect interval='10' times='3' />
+  -->
+ </account>
+
+ <log>
+  <level value='debug'/>
+  <!--
+  <syslog facility='local0'/>
+  -->
+  <!--
+  <stderr/>
+  -->
+  <!--
+  <piped_log cmd='cmd'/>
+  -->
+  <file path='report.log'/>
+ </log>
+
+ <lang dir='./lang' default='ru'/>
+
+ <plugins/>
+
+</gorgona>
