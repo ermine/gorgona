@@ -1,10 +1,10 @@
 (*
- * (c) 2007-2009 Anastasia Gornostaeva <ermine@ermine.pp.ru>
+ * (c) 2007-2010 Anastasia Gornostaeva <ermine@ermine.pp.ru>
  *)
 
 open Transport
 open XMPP
-open Jid
+open JID
 open Grgn_config
 open Grgn_session
 

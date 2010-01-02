@@ -27,8 +27,8 @@ let _ = dispatch begin function
       ocaml_lib ~extern:true ~dir:"+lablgtk2" "lablgtk";
       extern "mltls";
       extern "treap";
-      extern "xml";
-      extern ~cma:"xMPP" ~tag_name:"use_xmpp" "xmpp";
+      extern "xml";  
+      extern ~cma:"XMPP" "xmpp";
       extern "logger";
       
   | _ ->

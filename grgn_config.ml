@@ -1,10 +1,10 @@
 (*
- * (c) 2007-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2007-2010 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Arg
 open Light_xml
-open Jid
+open JID
 open Grgn_session
   
 type account = {
