@@ -1,0 +1,5 @@
+(* OASIS_START *)
+(* DO NOT EDIT (digest: dd6e5ea23de0c0b8ad8b6e7fe85a1c82) *)
+Authors of gorgona
+Anastasia Gornostaeva
+(* OASIS_STOP *)

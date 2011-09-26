@@ -1,2 +1,10 @@
-true: -warn_error_A,  use_unix, use_cryptokit,  use_lablgtk, use_mltls, use_xml, use_XMPP,  use_logger, use_treap
-
+# OASIS_START
+# DO NOT EDIT (digest: 18d5dea451388f15c9e9884e88ff64fc)
+# Executable gorgona
+<gorgona.{native,byte}>: pkg_xmpp
+<gorgona.{native,byte}>: pkg_xml
+<gorgona.{native,byte}>: pkg_lablgtk2
+<*.ml{,i}>: pkg_xmpp
+<*.ml{,i}>: pkg_xml
+<*.ml{,i}>: pkg_lablgtk2
+# OASIS_STOP

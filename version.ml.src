@@ -1,6 +1,0 @@
-(*
- * (c) 2007-2009 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
- *)
-
-let name = "Gorgona"
-let version = "0.1-git-VERSION"

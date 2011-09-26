@@ -1,0 +1,8 @@
+setup.log
+setup.data
+*.byte
+*.native
+*.docdir
+_build
+gorgona.conf
+version.ml

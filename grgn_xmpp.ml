@@ -1,5 +1,5 @@
 (*
- * (c) 2007-2010 Anastasia Gornostaeva <ermine@ermine.pp.ru>
+ * (c) 2005-2011 Anastasia Gornostaeva <ermine@ermine.pp.ru>
  *)
 
 open Transport
@@ -9,7 +9,9 @@ open Grgn_config
 open Grgn_session
 
 let session xmpp =
+  (*
   log#info "Connected to %s!" xmpp.myjid.domain;
+  *)
   ()
 
 let run account =

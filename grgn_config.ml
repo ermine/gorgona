@@ -1,5 +1,5 @@
 (*
- * (c) 2007-2010 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
+ * (c) 2005-2011 Anastasia Gornostaeva. <ermine@ermine.pp.ru>
  *)
 
 open Arg
@@ -74,7 +74,8 @@ let parse_account jid els =
                     use_compress = false
                    } els
 
-let setup_logger els =
+let setup_logger els = ()
+  (*
   let level, dst =
     List.fold_left
       (fun (level, dst) -> function
@@ -110,7 +111,8 @@ let setup_logger els =
       | Some v ->
           log#set_max_level level;
           log#set_destination v
-    
+  *)
+  
 let get_plugins els =
   List.fold_left (fun acc -> function
                     | Xmlelement ("plugin", attrs, els) ->

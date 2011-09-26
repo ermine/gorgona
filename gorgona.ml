@@ -1,5 +1,5 @@
 (*
- * (c) 2007-20010 Anastasia Gornostaeva <ermine@ermine.pp.ru>
+ * (c) 2005-20011 Anastasia Gornostaeva <ermine@ermine.pp.ru>
  *)
 
 open GMain
@@ -26,10 +26,10 @@ let _ =
   let vbox = GPack.vbox ~packing:window#add () in
   let menubar = GMenu.menu_bar ~packing:vbox#add () in
   let vpaned = GPack.paned `HORIZONTAL ~packing:vbox#add () in
-  let _roster = GMisc.label ~text:"Roster" ~packing:vpaned#add () in
-  let notebook = GPack.notebook ~packing:vpaned#add () in
-  let _tab = GMisc.label ~text:"Tab"
-    ~packing:(fun w -> ignore (notebook#append_page w)) ()in
+  let _roster = new Grgn_roster.roster ~packing:vpaned#add1 () in
+  let notebook = GPack.notebook ~packing:vpaned#add2 () in
+  let _room = new Grgn_muc.muc_room
+    ~packing:(fun w -> ignore (notebook#append_page w)) () in
 
     add_menu menubar;
     window#show ();

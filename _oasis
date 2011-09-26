@@ -1,0 +1,24 @@
+OASISFormat: 0.2
+Name:        gorgona
+Version:     0.1
+Synopsis:    XMPP/Jabber client
+Authors:     Anastasia Gornostaeva
+License:     BSD3
+LicenseFile: LICENCE
+Plugins:     DevFiles (0.2), META (0.2), StdFiles (0.2)
+BuildTools:  ocamlbuild
+FilesAB:     version.ml.ab
+
+
+Executable gorgona
+  Path:       .
+  Install:    false
+  CompiledObject: best
+  MainIs: gorgona.ml
+  BuildDepends: xml, xmpp, lablgtk2
+
+SourceRepository github
+  Type:     git
+  Location: git://github.com/ermine/gorgona.git
+  Browser:  https://github.com/ermine/gorgona
+  
