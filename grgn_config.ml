@@ -143,7 +143,7 @@ let read_config = function
                    | "account" ->
                        let value = catch (List.assoc "jid") attrs
                          "account/jid attribute MUST present" in
-                       let jid = catch jid_of_string value
+                       let jid = catch JID.of_string value
                          "account/jid MUST be user@server value" in
                        let account = parse_account jid els in
                          (account :: accounts, plugins)

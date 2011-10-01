@@ -8,11 +8,34 @@ open JID
 open Grgn_config
 open Grgn_session
 
-let session xmpp =
-  (*
-  log#info "Connected to %s!" xmpp.myjid.domain;
-  *)
+let message_callback t stanza =
   ()
+
+let message_error t ?id ?jid_from ?jid_to ?lang error =
+  ()
+    
+let presence_callback t stanza =
+  ()
+  
+let presence_error t ?id ?jid_from ?jid_to ?lang error =
+  ()
+
+let session xmpp =
+  XMPP.register_iq_request_handler xmpp XEP_version.ns_version
+    (fun ev _jid_from _jid_to _lang () ->
+      match ev with
+        | IQGet _el ->
+          let el = XEP_version.encode {XEP_version.name = Version.name;
+                                       XEP_version.version = Version.version;
+                                       XEP_version.os = Sys.os_type} in
+            IQResult (Some el)
+        | IQSet _el ->
+          raise BadRequest
+    );
+  XMPP.register_stanza_handler xmpp (ns_client, "message")
+    (parse_message ~callback:message_callback ~callback_error:message_error);
+  XMPP.register_stanza_handler xmpp (ns_client, "presence")
+    (parse_presence ~callback:presence_callback ~callback_error:presence_error)
 
 let create_account account =
   let myjid =

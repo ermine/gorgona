@@ -33,8 +33,11 @@ object (self)
 end
 
 open Grgn_app
+open XEP_muc
+open JID
 
 (* menu callback for "Join Conference" *)
 let join () =
   let _room = new muc_room ~packing:(fun w -> appwin#add_chat w) () in
-    ()
+  let room = JID.of_string "devel@conference.jabber.ru" in
+    XEP_muc.enter_room appwin#xmpp ~nick:"gorgona" room
