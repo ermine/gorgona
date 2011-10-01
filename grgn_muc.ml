@@ -8,7 +8,7 @@ open Gobject.Data
   
 class muc_roster ?packing () =
   let cols = new GTree.column_list in
-  let col_item = cols#add string in
+  let _col_item = cols#add string in
   let model = GTree.tree_store cols in
   let view = GTree.view ~model ?packing () in
 object (self)
@@ -31,3 +31,10 @@ class muc_room ?packing () =
 object (self)
   inherit widget vpaned#as_widget
 end
+
+open Grgn_app
+
+(* menu callback for "Join Conference" *)
+let join () =
+  let _room = new muc_room ~packing:(fun w -> appwin#add_chat w) () in
+    ()

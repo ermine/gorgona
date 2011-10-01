@@ -14,7 +14,7 @@ let session xmpp =
   *)
   ()
 
-let run account =
+let create_account account =
   let myjid =
     if account.resource = "" then
       account.jid
@@ -27,16 +27,16 @@ let run account =
     fd = s;
     send = send s;
     read = read s
-  } in
+} in
   let xmpp = XMPP.create session_key socket myjid in
-    Transport.connect s myjid.ldomain 5222;
-    XMPP.open_stream xmpp ~use_tls:false account.password session;
     let watcher _ =
       XMPP.parse xmpp;
       true
     in
     let chann = GMain.Io.channel_of_descr socket.fd in
-      ignore (GMain.Io.add_watch ~cond:[`IN] ~callback:watcher chann)
+      ignore (GMain.Io.add_watch ~cond:[`IN] ~callback:watcher chann);
+      xmpp
 
-let start accounts =
-  List.iter run accounts
+let connect xmpp account =
+  Transport.connect xmpp.socket.fd xmpp.myjid.ldomain 5222;
+  XMPP.open_stream xmpp ~use_tls:false account.password session
