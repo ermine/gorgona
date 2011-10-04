@@ -8,16 +8,98 @@ open JID
 open Grgn_config
 open Grgn_session
 
-let message_callback t stanza =
+let catch f x = try Some (f x) with Not_found -> None
+let lpair jid = (jid.lnode, jid.ldomain)
+
+module Chats =
+  Map.Make(struct type t = string * string let compare = Pervasives.compare end)
+
+module ResourceSet = Set.Make(String)
+
+type ctx = session_data XMPP.t
+and session_data = {
+  skey : string;
+  mutable chats : chat_data Chats.t
+}
+and chat_data = {
+  mutable resources : ResourceSet.t;
+  handler : (ctx -> presence_content stanza -> unit)
+}
+
+let message_callback xmpp stanza =
+  ()
+    (*
+  let hook =
+    try Some (Chats.find stanza.jid_from xmpp.chats)
+    with Not_found -> None in
+    match hook with
+      | Some f -> f xmpp stanza
+      | None -> ()
+    *)
+
+let add_hook xmpp jid proc =
+  let data =
+    try Some (Chats.find (lpair jid) xmpp.data.chats)
+    with Not_found -> None in
+    match data with
+      | Some data ->
+        if not (ResourceSet.mem jid.lresource data.resources ) then
+          data.resources <- ResourceSet.add jid.lresource data.resources
+      | None ->
+        xmpp.data.chats <- Chats.add (lpair jid) {
+          resources = ResourceSet.add jid.lresource ResourceSet.empty;
+          handler = proc
+        } xmpp.data.chats
+        
+let add_resource xmpp jid =
+  let data =
+    try Some (Chats.find (lpair jid) xmpp.data.chats)
+    with Not_found -> None in
+    match data with
+      | Some data ->
+        if not (ResourceSet.mem jid.lresource data.resources ) then
+          data.resources <- ResourceSet.add jid.lresource data.resources
+      | None -> ()
+        
+let remove_hook xmpp jid =
+  let data =
+    try Some (Chats.find (lpair jid) xmpp.data.chats)
+    with Not_found -> None in
+    match data with
+      | Some data ->
+        if jid.lresource <> "" then
+          data.resources <- ResourceSet.remove jid.lresource data.resources
+        else
+          xmpp.data.chats <- Chats.remove (lpair jid) xmpp.data.chats
+      | None -> ()
+
+let remove_resource xmpp jid =
+  let data =
+    try Some (Chats.find (lpair jid) xmpp.data.chats)
+    with Not_found -> None in
+    match data with
+      | Some data ->
+        if jid.lresource <> "" then
+          data.resources <- ResourceSet.remove jid.lresource data.resources
+      | None -> ()
+  
+let message_error xmpp ?id ?jid_from ?jid_to ?lang error =
   ()
 
-let message_error t ?id ?jid_from ?jid_to ?lang error =
-  ()
+let presence_callback (xmpp:session_data XMPP.t) stanza =
+  match stanza.jid_from with
+    | Some jid_from -> (
+      let data =
+        try Some (Chats.find (lpair jid_from) xmpp.data.chats)
+        with Not_found -> None in
+        match data with
+          | Some data -> data.handler xmpp stanza
+          | None -> ()
+    )
+    | None -> ()
     
-let presence_callback t stanza =
-  ()
-  
-let presence_error t ?id ?jid_from ?jid_to ?lang error =
+
+let presence_error xmpp ?id ?jid_from ?jid_to ?lang error =
   ()
 
 let session xmpp =
@@ -44,14 +126,17 @@ let create_account account =
     else
       replace_resource account.jid account.resource
   in
-  let session_key = "skey" in
+  let session_data = {
+    skey = "skey";
+    chats = Chats.empty
+  } in
   let s = Unix.socket Unix.PF_INET Unix.SOCK_STREAM 0 in
   let socket = {
     fd = s;
     send = send s;
     read = read s
 } in
-  let xmpp = XMPP.create session_key socket myjid in
+  let xmpp = XMPP.create session_data socket myjid in
     let watcher _ =
       XMPP.parse xmpp;
       true

@@ -15,7 +15,7 @@ Executable gorgona
   Install:    false
   CompiledObject: best
   MainIs: gorgona.ml
-  BuildDepends: xml, xmpp, lablgtk2
+  BuildDepends: erm_xml, erm_xmpp, lablgtk2
 
 SourceRepository github
   Type:     git
