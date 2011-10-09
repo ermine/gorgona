@@ -48,3 +48,19 @@ let appwin =
   let appwin = new appwin (List.hd accounts) in
     appwin
     
+
+let create_menu (main, menu_items) =
+  let mainitem = GMenu.menu_item ~label:main () in
+  let submenu = GMenu.menu () in
+    List.iter (fun (i, modi, key, callback) ->
+      let item = GMenu.menu_item ~label:i ~packing:submenu#append () in
+        item#connect#activate ~callback;
+        item#add_accelerator ~group:appwin#accel_group
+          ~modi ~flags:[`VISIBLE] key
+    ) menu_items;
+    mainitem#set_submenu submenu;
+    appwin#menubar#append mainitem
+      
+let main () =
+  (* GtkThread.main () *)
+  GMain.Main.main ()
