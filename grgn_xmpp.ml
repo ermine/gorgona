@@ -23,7 +23,8 @@ and session_data = {
 }
 and chat_data = {
   mutable resources : ResourceSet.t;
-  handler : (ctx -> presence_content stanza -> unit)
+  presence_handler : (ctx -> presence_content stanza -> unit);
+  message_handler : (ctx -> message_content stanza -> unit)
 }
 
 let message_callback xmpp stanza =
@@ -37,7 +38,7 @@ let message_callback xmpp stanza =
       | None -> ()
     *)
 
-let add_hook xmpp jid proc =
+let add_hook xmpp jid presence_proc message_proc =
   let data =
     try Some (Chats.find (lpair jid) xmpp.data.chats)
     with Not_found -> None in
@@ -48,7 +49,8 @@ let add_hook xmpp jid proc =
       | None ->
         xmpp.data.chats <- Chats.add (lpair jid) {
           resources = ResourceSet.add jid.lresource ResourceSet.empty;
-          handler = proc
+          presence_handler = presence_proc;
+          message_handler = message_proc
         } xmpp.data.chats
         
 let add_resource xmpp jid =
@@ -93,7 +95,7 @@ let presence_callback (xmpp:session_data XMPP.t) stanza =
         try Some (Chats.find (lpair jid_from) xmpp.data.chats)
         with Not_found -> None in
         match data with
-          | Some data -> data.handler xmpp stanza
+          | Some data -> data.presence_handler xmpp stanza
           | None -> ()
     )
     | None -> ()

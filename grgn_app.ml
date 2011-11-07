@@ -30,6 +30,7 @@ class appwin data =
 object (self)
   inherit widget window#as_widget
 
+  method window = window
   method menubar = menubar
   method accel_group = accel_group
   method xmpp = xmpp

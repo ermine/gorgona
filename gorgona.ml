@@ -1,8 +1,18 @@
 (*
- * (c) 2005-20011 Anastasia Gornostaeva <ermine@ermine.pp.ru>
+ * (c) 2005-2011 Anastasia Gornostaeva <ermine@ermine.pp.ru>
  *)
 
 open Grgn_app
+
+
+  let _ =
+    GtkMain.Rc.parse_string "
+      binding \"Pouet\" {
+        bind \"<Control>S\" { \"my-return\" () }
+      }
+
+class \"GtkTextView\" binding \"Pouet\"
+"
 
 let create_menus () =
   List.iter (fun m -> create_menu m) [

@@ -1,5 +1,5 @@
 (*
- * (c) 2005-20011 Anastasia Gornostaeva <ermine@ermine.pp.ru>
+ * (c) 2005-2011 Anastasia Gornostaeva <ermine@ermine.pp.ru>
  *)
 
 open GObj
@@ -60,7 +60,8 @@ object (self)
   method muc_event_leave nick (reason:string option) =
     self#print_text tag_muc_event (nick ^ "had left the room")
 
-  method muc_event_nick (nick:string) (reason:string option) =
+  method muc_event_nick_changed (oldnick:string)  (newnick:string)
+    (reason:string option) =
     self#print_text tag_muc_event "smth"
 
   method muc_event_destroy (jid:JID.t option) (password:string option) (reason:string option) () =
@@ -202,7 +203,8 @@ let process_presence_user ctx xmpp stanza from data enter =
                     (Occupant.find from.lresource ctx.occupants)
                     ctx.occupants;
                   let reason = get_reason data.User.item in
-                    ctx.room_widget#muc_event_nick newnick reason;
+                    ctx.room_widget#muc_event_nick_changed
+                      from.resource newnick reason;
                     true
         else
           removal
