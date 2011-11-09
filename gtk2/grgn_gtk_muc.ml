@@ -106,27 +106,31 @@ object (self)
   method muc_event_system_shutdown (reason:string option) =
     self#print_text tag_muc_event "smth"
 
-  method muc_event_decline (jid1:JID.t) (jid2:JID.t) (reason:string option) =
+  method muc_event_decline (jid1:JID.t option) (jid2:JID.t option)
+    (reason:string option) () =
     self#print_text tag_muc_event "smth"
 
-  method muc_event_invite (jid1:JID.t) (jid2:JID.t) (reason:string option)
-    (password:string option) () =
+  method muc_event_invite (jid1:JID.t option) (jid2:JID.t option)
+    (reason:string option) (password:string option) () =
     self#print_text tag_muc_event "smth"
 
   method process_presence xmpp stanza =
     Grgn_muc.process_presence self xmpp stanza
 
   method process_message (xmpp:Grgn_xmpp.xmpp) (stanza:XMPP.message_stanza) =
-    ()
+    Grgn_muc.process_message self xmpp stanza
 
   method as_page_window = (self :> page_window)
+
+  method display_message nick body =
+    self#print_text tag_muc_event ("<" ^ nick ^ "> " ^ body)
 
 end
 
 (* menu callback for "Join Conference" *)
 let join () =
   let mynick = "gorgona" in
-  let room = JID.of_string "ocaml@conference.jabber.ru" in
+  let room = JID.of_string "devel@conference.jabber.ru" in
   let room_window = new muc_room room mynick
     ~packing:(fun w -> appwin#add_page w) () in
     appwin#add_page_window (Grgn_xmpp.lpair room) room_window#as_page_window;

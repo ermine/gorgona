@@ -2,9 +2,12 @@
  * (c) 2005-2011 Anastasia Gornostaeva <ermine@ermine.pp.ru>
  *)
 
+open Xml
 open XMPP
 open JID
 open XEP_muc
+
+open Grgn_xmpp
 
 type occupant = {
   (* nick : string; *)
@@ -44,10 +47,13 @@ object
       
   method muc_event_system_shutdown : string option -> unit
 
-  method muc_event_decline : JID.t -> JID.t -> string option -> unit
+  method muc_event_decline : JID.t option -> JID.t option ->
+    string option -> unit -> unit
 
-  method muc_event_invite : JID.t -> JID.t ->
-    string option -> string option -> unit
+  method muc_event_invite : JID.t option -> JID.t option ->
+    string option -> string option -> unit -> unit
+
+  method display_message : string -> string -> unit
 end
     
 
@@ -235,4 +241,91 @@ let process_presence self xmpp stanza =
         | _ ->
           (* do_hook xmpp stanza hooks *)
           ()
+
+let process_message_status self xmpp stanza status =
+  List.iter 
+    (function
+      | 100
+       (* context: Entering a room *)
+       (* Inform user that any occupant is allowed to see the user's
+          full JID *)
+      | 101
+       (* message out of band *)
+       (* context Affiliation change *)
+       (* Inform user that his or her affiliation changed
+          while not in the room *)
+      | 102
+       (* context Configuration change *)
+       (* Inform occupants that room now shows unavailable
+          members *)
+      | 103
+       (* context Configuration change *)
+       (* Inform occupants that room now does not show
+          unavailable members *)
+      | 104
+       (* context Configuration change *)
+       (* Inform occupants that a non-privacy-related room
+          configuration change has occured *)
+      | 170
+       (* context Configuration change *)
+       (* Inform occupants that room logging is now enabled *)
+      | 171
+       (* context Configuration change *)
+       (* Inform occupants that room logging is now disabled *)
+      | 172
+       (* context Configuration change *)
+       (* Inform occupants that the room is now non- anonymous *)
+      | 173
+       (* context Configuration change *)
+       (* Inform occupants that the room is now semi- anonymous *)
+      | 174 ->
+           (* context Configuration change *)
+           (* Inform occupants that the room is now fully-anonymous *)
+        ()
+      | _ ->
+        ()
+    ) status
+    
+let process_message_user_x self xmpp stanza from data =
+  let () =
+    match stanza.content.message_type with
+      | None
+      | Some Normal -> (
+        match data.User.decline with
+          | None -> ()
+          | Some (jid_from, jid_to, reason) ->
+            self#muc_event_decline jid_from jid_to reason ()
+      );
+        List.iter
+          (fun (jid_from, jid_to, reason) ->
+            self#muc_event_invite jid_from jid_to reason data.User.password ()
+          ) data.User.invite
+      | Some Groupchat ->
+        ()
+      | _ ->
+        ()
+  in
+    process_message_status self xmpp stanza data.User.status;
+    if data.User.decline <> None || data.User.invite <> [] ||
+      data.User.status <> [] then
+      true
+    else
+      false
+            
+let process_message self xmpp stanza =
+  match stanza.jid_from with
+    | None -> () (* TODO *)
+    | Some from ->        
+      let continue =
+        match catch (get_element (ns_muc_user, "x")) stanza.x with
+          | Some el ->
+            process_message_user_x self xmpp stanza from (User.decode el)
+          | None ->
+            true
+      in
+        if continue then
+          match stanza.content.body with
+            | None -> () (* TODO *)
+            | Some body ->
+              self#display_message from.resource body
             
