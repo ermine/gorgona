@@ -1,5 +1,5 @@
 (* OASIS_START *)
-(* DO NOT EDIT (digest: 6bc2f45731b15e28d4e034399e5f1216) *)
+(* DO NOT EDIT (digest: ce39f3111f90d1f897fdc3a3dd1a0c71) *)
 This is the INSTALL file for the gorgona distribution.
 
 This package uses OASIS to generate its build system. See section OASIS for
@@ -11,9 +11,9 @@ Dependencies
 In order to compile this package, you will need:
 * ocaml
 * findlib
-* erm_xml
-* erm_xmpp
-* lablgtk2
+* erm_xml for library grgn_xmpp
+* erm_xmpp for library grgn_xmpp
+* lablgtk2 for executable gorgona-gtk
 
 Installing
 ==========

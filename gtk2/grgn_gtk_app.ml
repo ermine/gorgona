@@ -5,9 +5,21 @@
 open GObj
 open GMain
 
+open XMPP
+open Grgn_xmpp
+
 let _ =
   GtkMain.Main.init ()
   
+
+class type page_window =
+object
+  (* method process_iq : xmpp -> XMPP.iq_stanza -> unit *)
+  method process_presence : xmpp -> XMPP.presence_stanza -> unit
+  method process_message : xmpp -> XMPP.message_stanza -> unit
+end
+
+
 class appwin data =
   let window = GWindow.window ~width:400 ~height:400 () in
   let vbox = GPack.vbox ~packing:window#add () in
@@ -22,14 +34,21 @@ class appwin data =
   in
   let vpaned = GPack.paned `HORIZONTAL
     ~packing:(vbox#pack ~expand:true ~fill:true) () in
-  let _roster = new Grgn_roster.roster ~packing:vpaned#add1 () in
+  let _roster = new Grgn_gtk_roster.roster ~packing:vpaned#add1 () in
   let notebook = GPack.notebook ~packing:vpaned#add2 () in
 
   let xmpp = Grgn_xmpp.create_account data in
+  let watcher _ =
+    (* TODO modify all internal data in Glib.idle *)
+    XMPP.parse xmpp;
+    true
+  in
+  let chann = GMain.Io.channel_of_descr xmpp.socket.Transport.fd in
+  let () =
+    ignore (GMain.Io.add_watch ~cond:[`IN] ~callback:watcher chann) in
+
   
 object (self)
-  inherit widget window#as_widget
-
   method window = window
   method menubar = menubar
   method accel_group = accel_group
@@ -39,8 +58,11 @@ object (self)
     window#show ();
     Grgn_xmpp.connect xmpp data
 
-  method add_chat w =
-    ignore (notebook#append_page w)
+  method add_page_window hint page =
+    Grgn_xmpp.add_page_window xmpp hint page
+      
+  method add_page page =
+    ignore (notebook#append_page page)
 
 end
 

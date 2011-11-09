@@ -1,0 +1,10 @@
+# OASIS_START
+# DO NOT EDIT (digest: 962c6ac34978f1627283113a5d039429)
+version = "0.1"
+description = "XMPP/Jabber client"
+requires = "erm_xml erm_xmpp"
+archive(byte) = "grgn_xmpp.cma"
+archive(native) = "grgn_xmpp.cmxa"
+exists_if = "grgn_xmpp.cma"
+# OASIS_STOP
+

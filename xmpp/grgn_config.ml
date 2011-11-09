@@ -5,7 +5,6 @@
 open Arg
 open Light_xml
 open JID
-open Grgn_session
   
 type account = {
   jid : JID.t;

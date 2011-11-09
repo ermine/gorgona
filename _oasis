@@ -10,12 +10,18 @@ BuildTools:  ocamlbuild
 FilesAB:     version.ml.ab
 
 
-Executable gorgona
-  Path:       .
-  Install:    false
+Library grgn_xmpp
+  Path:           xmpp
+  Install:        false
+  Modules:        Grgn_config, Grgn_xmpp, Grgn_muc
+  BuildDepends:   erm_xml, erm_xmpp
+
+Executable "gorgona-gtk"
+  Path:           gtk2
+  Install:        false
   CompiledObject: best
-  MainIs: gorgona.ml
-  BuildDepends: erm_xml, erm_xmpp, lablgtk2
+  MainIs:         gorgona.ml
+  BuildDepends:   grgn_xmpp, lablgtk2
 
 SourceRepository github
   Type:     git
