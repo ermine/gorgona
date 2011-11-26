@@ -1,5 +1,5 @@
 (*
- * (c) 2005-2011 Anastasia Gornostaeva <ermine@ermine.pp.ru>
+ * (c) 2005-2011 Anastasia Gornostaeva
  *)
 
 open Transport
@@ -187,20 +187,27 @@ let presence_error xmpp ?id ?jid_from ?jid_to ?lang error =
 
 let session xmpp =
   XMPP.register_iq_request_handler xmpp XEP_version.ns_version
-    (fun ev _jid_from _jid_to _lang () ->
-      match ev with
-        | IQGet _el ->
-          let el = XEP_version.encode {XEP_version.name = Version.name;
-                                       XEP_version.version = Version.version;
-                                       XEP_version.os = Sys.os_type} in
-            IQResult (Some el)
-        | IQSet _el ->
-          raise BadRequest
+    XEP_version.(
+      iq_request
+        ~get:(fun ?jid_from ?jid_to ?lang () -> {
+          name = Version.name;
+          version = Version.version;
+          os = Sys.os_type
+        })
     );
   XMPP.register_stanza_handler xmpp (ns_client, "message")
     (parse_message ~callback:message_callback ~callback_error:message_error);
   XMPP.register_stanza_handler xmpp (ns_client, "presence")
-    (parse_presence ~callback:presence_callback ~callback_error:presence_error)
+    (parse_presence ~callback:presence_callback ~callback_error:presence_error);
+
+  let open Roster in
+        get xmpp (fun ?jid_from ?jid_to ?lang ?ver items ->
+          List.iter (fun item ->
+            Printf.printf "%s %s\n" (JID.string_of_jid item.jid) item.name;
+            flush stdout
+          ) items
+        )
+        
 
 let create_account account =
   let myjid =
