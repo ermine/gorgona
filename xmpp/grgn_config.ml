@@ -24,19 +24,19 @@ let unknown msg =
   Printf.eprintf "%s\n" msg;
   Pervasives.exit 127
 
-let catch f x msg =
+let need f x msg =
   try f x with _ ->
     Printf.eprintf "Error in configuration file: %s\n" msg;
     Pervasives.exit 127
   
 let parse_account jid els =
   List.fold_left (fun account -> function
-    | Xmlelement (name, _attrs, els) as el -> (
+    | Xmlelement (name, attrs, els) as el -> (
       match name with
         | "ip" ->
           {account with ip = get_cdata el}
         | "port" ->
-          let port = catch int_of_string (get_cdata el)
+          let port = need int_of_string (get_cdata el)
             "account/port MUST be integer" in
             {account with port = Some port}
         | "password" ->
@@ -44,13 +44,15 @@ let parse_account jid els =
         | "resource" ->
           {account with resource = get_cdata el}
         | "rawxml_log" ->
-          {account with rawxml_log = get_cdata el}
+          let value = need (List.assoc "file") attrs
+            "account/rawxml_log MUST have 'file' attribute" in
+            {account with rawxml_log = value}
         | "reconnect_interval" ->
-          let value = catch int_of_string (get_cdata el)
+          let value = need int_of_string (get_cdata el)
             "account/reconnect_interval MUST be integer" in
             {account with reconnect_interval = value}
         | "reconnect_times" ->
-          let value = catch int_of_string (get_cdata el)
+          let value = need int_of_string (get_cdata el)
             "account/reconnect_times MUST be integer" in
             {account with reconnect_times = value}
         | "starttls" ->
@@ -83,21 +85,21 @@ let setup_logger els = ()
          | Xmlelement (name, attrs, els) as el -> (
              match name with
                | "level" ->
-                   let value = catch (List.assoc "value") attrs
+                   let value = need (List.assoc "value") attrs
                      "log/level MUST have value attribute" in
                      (value, dst)
                | "syslog" ->
-                   let facility = catch (List.assoc "facility") attrs
+                   let facility = need (List.assoc "facility") attrs
                      "log/syslog MUST have a facility attribute" in
                      (level, Some (new Logger.syslog facility))
                | "stderr" ->
                    (level, Some (new Logger.log_stderr))
                | "piped_log" ->
-                   let cmd = catch (List.assoc "cmd") attrs
+                   let cmd = need (List.assoc "cmd") attrs
                      "log/piped_log MUST have cmd attribute" in
                      (level, Some (new Logger.piped_log cmd))
                | "file" ->
-                   let path = catch (List.assoc "path") attrs
+                   let path = need (List.assoc "path") attrs
                      "log/file MUST have path attribute" in
                      (level, Some (new Logger.logfile path))
                | other ->
@@ -117,9 +119,9 @@ let setup_logger els = ()
 let get_plugins els =
   List.fold_left (fun acc -> function
                     | Xmlelement ("plugin", attrs, els) ->
-                        let name = catch (List.assoc "name") attrs
+                        let name = need (List.assoc "name") attrs
                           "plugin MUST have name attribute" in
-                        let path = catch (List.assoc "path") attrs
+                        let path = need (List.assoc "path") attrs
                           "plugin MUST have path attribute" in
                         let opts =
                           List.fold_left (fun acc -> function
@@ -142,9 +144,9 @@ let read_config = function
              | Xmlelement (name, attrs, els) -> (
                  match name with
                    | "account" ->
-                       let value = catch (List.assoc "jid") attrs
+                       let value = need (List.assoc "jid") attrs
                          "account/jid attribute MUST present" in
-                       let jid = catch JID.of_string value
+                       let jid = need JID.of_string value
                          "account/jid MUST be user@server value" in
                        let account = parse_account jid els in
                          (account :: accounts, plugins)
@@ -153,7 +155,7 @@ let read_config = function
                        (accounts, plugins)
 (*                         
                    | "lang" ->
-                       Lang.dir := catch (List.assoc "dir") attrs
+                       Lang.dir := need (List.assoc "dir") attrs
                          "lang/dir MUST be defined";
                        Lang.deflang :=
                          (try List.assoc "default" attrs

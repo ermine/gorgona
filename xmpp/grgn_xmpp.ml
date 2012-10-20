@@ -261,19 +261,44 @@ struct
 
   let read s buf start len =
     let size = input s.inc buf start len in
-      if size > 0 then
-        print_string "IN: "; print_endline (String.sub buf start size);
       size
 
   let write s str =
-    print_string "OUT: ";
-    print_endline str;
-    flush stdout;
     output_string s.outc str;
     flush s.outc
 
   let close s = close_in s.inc; close_out s.outc
 
+end
+
+module LogTraffic  (T : XMPPClient.Socket)
+  (L : sig val logfile : out_channel end) =
+struct
+  open UnitMonad
+
+  type t = T.t
+  let socket = T.socket
+
+  let read s buf start len =
+    let size = T.read s buf start len in
+      if size = 0 then (
+        output_string L.logfile "IN CLOSED\n";
+        flush L.logfile;
+        size
+      ) else (
+        output_string L.logfile "IN: ";
+        output_string L.logfile (String.sub buf start size);
+        output_string L.logfile "\n";
+        flush L.logfile;
+        size
+      )
+
+  let write s str =
+    output_string L.logfile "OUT: ";
+    output_string L.logfile str;
+    output_string L.logfile "\n";
+    flush L.logfile;
+    T.write s str
 end
 
 let connect account =
@@ -301,12 +326,24 @@ let connect account =
   let sockaddr = Unix.ADDR_INET (inet_addr, port) in
   let socket_data = SimpleTransport.open_connection sockaddr in
   let fd = SimpleTransport.get_fd socket_data in
-  let module Plain_socket = struct type t = SimpleTransport.socket
-                                   let socket = socket_data
-                                   include SimpleTransport
-  end in
-  let xmpp = create_session_data (module Plain_socket : XMPPClient.Socket)
-    myjid user_data in
+  let module PlainSocket =
+      struct
+        type t = SimpleTransport.socket
+        let socket = socket_data
+        include SimpleTransport
+      end in
+  let socket_module =
+    if account.rawxml_log = "" then
+      (module PlainSocket : XMPPClient.Socket)
+    else
+      let module Socket_module =
+          struct
+            include LogTraffic(PlainSocket)
+              (struct let logfile = open_out account.rawxml_log end)
+          end in
+        (module Socket_module : XMPPClient.Socket)
+  in
+  let xmpp = create_session_data socket_module myjid user_data in
     fd, xmpp
     
 let create_parser session_data account =

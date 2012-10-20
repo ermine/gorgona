@@ -60,8 +60,12 @@ let appwin =
   let parse = create_parser xmpp account in
   let watcher _ =
       (* TODO modify all internal data in Glib.idle *)
-    parse ();
-    true
+    let () =
+      try
+        parse ()
+      with exn -> print_endline (Printexc.to_string exn)
+    in
+      true
   in
   let chann = GMain.Io.channel_of_descr fd in
   let () =
