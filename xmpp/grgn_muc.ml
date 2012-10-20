@@ -1,13 +1,14 @@
 (*
- * (c) 2005-2011 Anastasia Gornostaeva
+ * (c) 2005-2012 Anastasia Gornostaeva
  *)
 
 open Xml
-open XMPP
 open JID
-open XEP_muc
 
 open Grgn_xmpp
+module MUC = XEP_muc.Make (XMPPClient)
+open XMPPClient
+open MUC
 
 type occupant = {
   (* nick : string; *)
@@ -317,7 +318,7 @@ let process_message self xmpp stanza =
     | None -> () (* TODO *)
     | Some from ->        
       let continue =
-        match catch (get_element (ns_muc_user, "x")) stanza.x with
+        match opt_try (get_element (ns_muc_user, "x")) stanza.x with
           | Some el ->
             process_message_user_x self xmpp stanza from (User.decode el)
           | None ->

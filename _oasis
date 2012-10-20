@@ -1,6 +1,6 @@
-OASISFormat: 0.2
+OASISFormat: 0.3
 Name:        gorgona
-Version:     0.1
+Version:     0.1.1
 Synopsis:    XMPP/Jabber client
 Authors:     Anastasia Gornostaeva
 License:     BSD3
@@ -14,7 +14,7 @@ Library grgn_xmpp
   Path:           xmpp
   Install:        false
   Modules:        Grgn_config, Grgn_xmpp, Grgn_muc
-  BuildDepends:   erm_xml, erm_xmpp
+  BuildDepends:   erm_xml, erm_xmpp, erm_treap
 
 Executable "gorgona-gtk"
   Path:           gtk2

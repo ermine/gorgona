@@ -1,5 +1,5 @@
 (*
- * (c) 2005-2011 Anastasia Gornostaeva
+ * (c) 2005-2012 Anastasia Gornostaeva
  *)
 
 open Arg
@@ -16,7 +16,8 @@ type account = {
   reconnect_interval : int;
   reconnect_times : int;
   use_tls : bool;
-  use_compress : bool
+  use_compress : bool;
+  lang : string option
 }
 
 let unknown msg =
@@ -30,48 +31,49 @@ let catch f x msg =
   
 let parse_account jid els =
   List.fold_left (fun account -> function
-                    | Xmlelement (name, _attrs, els) as el -> (
-                        match name with
-                          | "ip" ->
-                              {account with ip = get_cdata el}
-                          | "port" ->
-                              let port = catch int_of_string (get_cdata el)
-                                "account/port MUST be integer" in
-                                {account with port = Some port}
-                          | "password" ->
-                              {account with password = get_cdata el}
-                          | "resource" ->
-                              {account with resource = get_cdata el}
-                          | "rawxml_log" ->
-                              {account with rawxml_log = get_cdata el}
-                          | "reconnect_interval" ->
-                              let value = catch int_of_string (get_cdata el)
-                                "account/reconnect_interval MUST be integer" in
-                                {account with reconnect_interval = value}
-                          | "reconnect_times" ->
-                              let value = catch int_of_string (get_cdata el)
-                                "account/reconnect_times MUST be integer" in
-                                {account with reconnect_times = value}
-                          | "starttls" ->
-                              {account with use_tls = true}
-                          | "compress" ->
-                              {account with use_compress = true}
-                          | _ ->
-                              account
-                      )
-                    | _ ->
-                        account
-                 ) {jid = jid;
-                    ip = "";
-                    port = None;
-                    password = "";
-                    resource = "";
-                    rawxml_log = "";
-                    reconnect_interval = 10;
-                    reconnect_times = 3;
-                    use_tls = false;
-                    use_compress = false
-                   } els
+    | Xmlelement (name, _attrs, els) as el -> (
+      match name with
+        | "ip" ->
+          {account with ip = get_cdata el}
+        | "port" ->
+          let port = catch int_of_string (get_cdata el)
+            "account/port MUST be integer" in
+            {account with port = Some port}
+        | "password" ->
+          {account with password = get_cdata el}
+        | "resource" ->
+          {account with resource = get_cdata el}
+        | "rawxml_log" ->
+          {account with rawxml_log = get_cdata el}
+        | "reconnect_interval" ->
+          let value = catch int_of_string (get_cdata el)
+            "account/reconnect_interval MUST be integer" in
+            {account with reconnect_interval = value}
+        | "reconnect_times" ->
+          let value = catch int_of_string (get_cdata el)
+            "account/reconnect_times MUST be integer" in
+            {account with reconnect_times = value}
+        | "starttls" ->
+          {account with use_tls = true}
+        | "compress" ->
+          {account with use_compress = true}
+        | _ ->
+          account
+    )
+    | _ ->
+      account
+  ) {jid = jid;
+     ip = "";
+     port = None;
+     password = "";
+     resource = "";
+     rawxml_log = "";
+     reconnect_interval = 10;
+     reconnect_times = 3;
+     use_tls = false;
+     use_compress = false;
+     lang = None
+    } els
 
 let setup_logger els = ()
   (*
@@ -212,6 +214,6 @@ let get_config () =
             | Some v -> Buffer.add_string buf v; read_file ()
       in
       let content = read_file () in
-      let xml = parse_document content in
+      let xml = Light_xml.parse_string content in
         read_config xml
           

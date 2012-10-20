@@ -1,11 +1,12 @@
 (*
- * (c) 2005-2011 Anastasia Gornostaeva
+ * (c) 2005-2012 Anastasia Gornostaeva
  *)
 
 open GObj
 open GMisc
 open Gobject.Data
 
+open Grgn_xmpp
 open Grgn_muc
 open Grgn_gtk_app
 
@@ -21,7 +22,8 @@ object (self)
 end
 
 let send_user_input room body =
-  XMPP.send_message appwin#xmpp ~jid_to:room ~kind:XMPP.Groupchat ~body ()
+  XMPPClient.send_message appwin#xmpp ~jid_to:room
+    ~kind:XMPPClient.Groupchat ~body ()
 
 class muc_room room_name mynick ?packing () =
   let vpaned = GPack.paned `VERTICAL ?packing () in
@@ -117,7 +119,8 @@ object (self)
   method process_presence xmpp stanza =
     Grgn_muc.process_presence self xmpp stanza
 
-  method process_message (xmpp:Grgn_xmpp.xmpp) (stanza:XMPP.message_stanza) =
+  method process_message (xmpp:Grgn_xmpp.xmpp)
+    (stanza:XMPPClient.message_stanza) =
     Grgn_muc.process_message self xmpp stanza
 
   method as_page_window = (self :> page_window)
@@ -130,8 +133,8 @@ end
 (* menu callback for "Join Conference" *)
 let join () =
   let mynick = "gorgona" in
-  let room = JID.of_string "devel@conference.jabber.ru" in
+  let room = JID.of_string "devil@conference.jabber.ru" in
   let room_window = new muc_room room mynick
     ~packing:(fun w -> appwin#add_page w) () in
     appwin#add_page_window (Grgn_xmpp.lpair room) room_window#as_page_window;
-    XEP_muc.enter_room appwin#xmpp ~nick:mynick room
+    MUC.enter_room appwin#xmpp ~nick:mynick room
