@@ -13,7 +13,7 @@ FilesAB:     version.ml.ab
 Library grgn_xmpp
   Path:           xmpp
   Install:        false
-  Modules:        Grgn_config, Grgn_xmpp, Grgn_muc
+  Modules:        Grgn_config, Grgn_xmpp, Grgn_muc, Grgn_ooc
   BuildDepends:   erm_xml, erm_xmpp, erm_treap
 
 Executable "gorgona-gtk"

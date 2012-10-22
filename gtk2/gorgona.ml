@@ -1,9 +1,8 @@
 (*
- * (c) 2005-2011 Anastasia Gornostaeva
+ * (c) 2005-2012 Anastasia Gornostaeva
  *)
 
 open Grgn_gtk_app
-
 
 let _ =
   GtkMain.Rc.parse_string "

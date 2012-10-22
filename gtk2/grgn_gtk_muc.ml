@@ -6,6 +6,7 @@ open GObj
 open GMisc
 open Gobject.Data
 
+open Grgn_gtk_types
 open Grgn_xmpp
 open Grgn_muc
 open Grgn_gtk_app
@@ -21,31 +22,26 @@ object (self)
   inherit widget view#as_widget
 end
 
-let send_user_input room body =
-  XMPPClient.send_message appwin#xmpp ~jid_to:room
-    ~kind:XMPPClient.Groupchat ~body ()
-
-class muc_room room_name mynick ?packing () =
-  let vpaned = GPack.paned `VERTICAL ?packing () in
+class muc_room room_name mynick packing =
+  let vpaned = GPack.paned `VERTICAL ~packing () in
   let hpaned = GPack.paned `HORIZONTAL ~height:200 ~packing:vpaned#add1 () in
   let scrolledchat = GBin.scrolled_window ~vpolicy:`ALWAYS ~hpolicy:`AUTOMATIC
     ~placement:`TOP_LEFT ~height:500 ~width:500 ~packing:hpaned#add1 () in
   let chatlog = GText.view ~editable:false ~wrap_mode:`WORD
     ~packing:scrolledchat#add () in
-  let _input = new Grgn_gtk_input.user_input ~packing:vpaned#add2
-    ~callback:(fun text -> send_user_input room_name text) () in
   let scrolledroster = GBin.scrolled_window ~hpolicy:`AUTOMATIC
     ~vpolicy:`AUTOMATIC ~placement:`TOP_LEFT ~packing:hpaned#add2 () in
   let _roster = new muc_roster ~packing:scrolledroster#add () in
-    
-object (self)
+object (self)  
   inherit widget vpaned#as_widget
-    
   val mutable mynick = ref mynick
   val occupants : (string, occupant) Hashtbl.t = Hashtbl.create 20
 
-  method get_mynick = !mynick
+  method mynick = !mynick
   method set_mynick nick = mynick := nick
+
+  method send body =
+    appwin#send_message ~jid_to:room_name ~kind:XMPPClient.Groupchat ~body ()
 
   method occupants = occupants
 
@@ -128,13 +124,15 @@ object (self)
   method display_message nick body =
     self#print_text tag_muc_event ("<" ^ nick ^ "> " ^ body)
 
+  initializer
+  let _input = new Grgn_gtk_input.user_input self ~packing:vpaned#add2 () in
+    ()
 end
 
 (* menu callback for "Join Conference" *)
 let join () =
   let mynick = "gorgona" in
   let room = JID.of_string "devil@conference.jabber.ru" in
-  let room_window = new muc_room room mynick
-    ~packing:(fun w -> appwin#add_page w) () in
+  let room_window = new muc_room room mynick (fun w -> appwin#add_page w) in
     appwin#add_page_window (Grgn_xmpp.lpair room) room_window#as_page_window;
     MUC.enter_room appwin#xmpp ~nick:mynick room

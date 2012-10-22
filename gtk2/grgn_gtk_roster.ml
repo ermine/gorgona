@@ -1,5 +1,5 @@
 (*
- * (c) 2005-2011 Anastasia Gornostaeva
+ * (c) 2005-2012 Anastasia Gornostaeva
  *)
 
 open GObj

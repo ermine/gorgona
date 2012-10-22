@@ -4,7 +4,7 @@
 
 open GObj
 
-class user_input ~packing ~callback () =
+class user_input parent ~packing () =
   let view = GText.view ~editable:true ~wrap_mode:`WORD
     ~height:50 ~packing ~show:true () in
 object (self)
@@ -23,7 +23,7 @@ object (self)
             '\n' -> String.sub s 1 (len - 1)
           | _ -> s
     in
-      callback s2;
+      parent#send s2;
       view#buffer#delete ~start ~stop;
       GtkSignal.stop_emit ()
   in

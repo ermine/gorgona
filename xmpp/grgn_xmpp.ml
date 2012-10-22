@@ -36,6 +36,69 @@ open XMPPClient
 let opt_try f x = try Some (f x) with Not_found -> None
 let lpair jid = (jid.lnode, jid.ldomain)
 
+module SimpleTransport =
+struct
+  type 'a z = 'a UnitMonad.t
+  type fd = unit
+      
+  type socket = {
+    inc : in_channel;
+    outc : out_channel;
+  }
+
+  let get_fd s = Unix.descr_of_in_channel s.inc
+
+  let can_tls = false
+  let can_compress = false
+
+  let open_connection sockaddr =
+    let inc, outc = Unix.open_connection sockaddr in
+      {inc;
+       outc
+      }
+
+  let read s buf start len =
+    let size = input s.inc buf start len in
+      size
+
+  let write s str =
+    output_string s.outc str;
+    flush s.outc
+
+  let close s = close_in s.inc; close_out s.outc
+
+end
+
+module LogTraffic  (T : XMPPClient.Socket)
+  (L : sig val logfile : out_channel end) =
+struct
+  open UnitMonad
+
+  type t = T.t
+  let socket = T.socket
+
+  let read s buf start len =
+    let size = T.read s buf start len in
+      if size = 0 then (
+        output_string L.logfile "IN CLOSED\n";
+        flush L.logfile;
+        size
+      ) else (
+        output_string L.logfile "IN: ";
+        output_string L.logfile (String.sub buf start size);
+        output_string L.logfile "\n";
+        flush L.logfile;
+        size
+      )
+
+  let write s str =
+    output_string L.logfile "OUT: ";
+    output_string L.logfile str;
+    output_string L.logfile "\n";
+    flush L.logfile;
+    T.write s str
+end
+
 module rec A : sig
   class type page_window =
   object
@@ -138,83 +201,8 @@ let add_presence_extension ns proc =
   Hashtbl.add presence_extensions ns proc
 *)
           
-let message_callback xmpp stanza =
-  match stanza.jid_from with
-    | None -> () (* TODO *)
-    | Some from ->
-      let p =
-        try Some (Hashtbl.find xmpp.user_data.pages (lpair from))
-        with Not_found -> None in
-        match p with
-          | None -> () (* TODO *)
-          | Some p ->
-            p#process_message xmpp stanza
-
-(*      
-      let rec iter_x = function
-        | [] -> true
-        | x :: xs ->
-          match x with
-            | Xmlelement (qname, _, _) ->
-              let f =
-                try Some (Hashtbl.find message_extensions qname)
-                with Not_found -> None in
-                match f with
-                  | None -> iter_x xs
-                  | Some f ->
-                    if f xmpp stanza x then
-                      iter_x xs
-                    else
-                      false
-      in
-      let result = iter_x stanza.x in
-        if result then
-          (* display message body and get x:delay *)
-          print_endline "body"
-*)
-              
-let message_error xmpp ?id ?jid_from ?jid_to ?lang error =
-  ()
-
-let presence_callback (xmpp:user_data XMPPClient.session_data) stanza =
-  print_endline "presence_callback";
-  match stanza.jid_from with
-    | None -> () (* TODO *)
-    | Some jid_from ->
-      let p =
-        try Some (Hashtbl.find xmpp.user_data.pages (lpair jid_from))
-        with Not_found -> None in
-        match p with
-          | None -> () (* TODO *)
-          | Some p ->
-            print_endline "presence";
-            p#process_presence xmpp stanza
-
-(*              
-      let rec iter_x = function
-        | [] -> false
-        | x :: xs ->
-          match x with
-            | Xmlelement (qname, _, _) ->
-              let f =
-                try Some (Hashtbl.find presence_extensions qname)
-                with Not_found -> None in
-                match f with
-                  | None -> iter_x xs
-                  | Some f ->
-                    if f xmpp stanza x then
-                      iter_x xs
-                    else
-                      false
-      in
-      let _ = iter_x stanza.x in
-        ()
-*)
-              
-let presence_error xmpp ?id ?jid_from ?jid_to ?lang error =
-  ()
-
-let session xmpp =
+let session_handler
+    message_callback message_error presence_callback presence_error xmpp =
   XMPPClient.register_iq_request_handler xmpp XVersion.ns_version
     XVersion.(
       iq_request
@@ -228,7 +216,6 @@ let session xmpp =
     (parse_message ~callback:message_callback ~callback_error:message_error);
   XMPPClient.register_stanza_handler xmpp (ns_client, "presence")
     (parse_presence ~callback:presence_callback ~callback_error:presence_error);
-
   let open R in
     get xmpp (fun ?jid_from ?jid_to ?lang ?ver items ->
       List.iter (fun item ->
@@ -236,82 +223,40 @@ let session xmpp =
         flush stdout
       ) items
     )
-        
 
-module SimpleTransport =
-struct
-  type 'a z = 'a UnitMonad.t
-  type fd = unit
-      
-  type socket = {
-    inc : in_channel;
-    outc : out_channel;
-  }
-
-  let get_fd s = Unix.descr_of_in_channel s.inc
-
-  let can_tls = false
-  let can_compress = false
-
-  let open_connection sockaddr =
-    let inc, outc = Unix.open_connection sockaddr in
-      {inc;
-       outc
-      }
-
-  let read s buf start len =
-    let size = input s.inc buf start len in
-      size
-
-  let write s str =
-    output_string s.outc str;
-    flush s.outc
-
-  let close s = close_in s.inc; close_out s.outc
-
-end
-
-module LogTraffic  (T : XMPPClient.Socket)
-  (L : sig val logfile : out_channel end) =
-struct
-  open UnitMonad
-
-  type t = T.t
-  let socket = T.socket
-
-  let read s buf start len =
-    let size = T.read s buf start len in
-      if size = 0 then (
-        output_string L.logfile "IN CLOSED\n";
-        flush L.logfile;
-        size
-      ) else (
-        output_string L.logfile "IN: ";
-        output_string L.logfile (String.sub buf start size);
-        output_string L.logfile "\n";
-        flush L.logfile;
-        size
-      )
-
-  let write s str =
-    output_string L.logfile "OUT: ";
-    output_string L.logfile str;
-    output_string L.logfile "\n";
-    flush L.logfile;
-    T.write s str
-end
-
-let connect account =
+let closed_session_data account =
+  let user_data = {
+    skey = "skey";
+    pages = Hashtbl.create 10
+  } in
   let myjid =
     if account.resource = "" then
       account.jid
     else
       replace_resource account.jid account.resource
   in
+  let module Pseudo_socket =
+      struct
+        type t = unit
+        let socket = ()
+        let read s buf start len = 0
+        let write s str = ()
+      end in
+    create_session_data (module Pseudo_socket : XMPPClient.Socket)
+      myjid user_data
+    
+
+let connect account =
   let user_data = {
     skey = "skey";
     pages = Hashtbl.create 10
   } in
+  let myjid =
+    if account.resource = "" then
+      account.jid
+    else
+      replace_resource account.jid account.resource
+  in
   let host, port =
     (if account.ip = "" then account.jid.domain else account.ip),
     (match account.port with
@@ -346,7 +291,8 @@ let connect account =
   let xmpp = create_session_data socket_module myjid user_data in
     fd, xmpp
     
-let create_parser session_data account =
+let create_parser session_data account message_callback message_error
+    presence_callback presence_error =
   let lang = account.Grgn_config.lang in
   let password = account.password in
     XMPPClient.send session_data
@@ -371,7 +317,9 @@ let create_parser session_data account =
        X.reset session_data.p (Some read);
        return ()
        )) *)
-      lang password session >>=
+       lang password
+       (session_handler message_callback message_error
+          presence_callback presence_error) >>=
       fun () -> return (fun () ->
         X.parse session_data.p
           stream_start (stream_stanza session_data) stream_end)

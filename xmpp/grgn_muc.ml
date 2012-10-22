@@ -19,7 +19,7 @@ type occupant = {
 
 class type groupchat_window =
 object
-  method get_mynick : string
+  method mynick : string
   method set_mynick : string -> unit
     
   method add_occupant : string -> occupant -> unit
@@ -142,7 +142,7 @@ let process_presence_user_x self xmpp stanza  from data enter =
               match i.User.nick with
                 | None -> removal
                 | Some newnick ->
-                  if from.lresource = self#get_mynick then
+                  if from.lresource = self#mynick then
                     self#set_mynick newnick;
                   self#add_occupant newnick  (self#find_occupant from.lresource);
                   let reason = get_reason data.User.item in
@@ -233,7 +233,7 @@ let process_presence self xmpp stanza =
             if enter then
               self#muc_event_join from.resource;
             if stanza.content.presence_type = Some Unavailable then
-              if from.lresource = self#get_mynick then
+              if from.lresource = self#mynick then
                 Grgn_xmpp.remove_page_window xmpp (Grgn_xmpp.lpair from)
               else
                 self#remove_occupant from.lresource;
