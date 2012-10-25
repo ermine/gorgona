@@ -2,8 +2,8 @@
  * (c) 2005-2012 Anastasia Gornostaeva
  *)
 
-open JID
 open Xml
+open JID
 open Grgn_config
 
 module UnitMonad =
@@ -30,16 +30,19 @@ struct
   let find key t = fst (T.find t key)
 end
 
-module XMPPClient = XMPP.Make (UnitMonad) (Xmlstream.XmlStreamIE) (IDCallback)
-open XMPPClient
-
-let opt_try f x = try Some (f x) with Not_found -> None
-let lpair jid = (jid.lnode, jid.ldomain)
-
+module PseudoSocket =
+struct
+  type t = unit
+  type 'a z = 'a UnitMonad.t
+  let socket = ()
+  let read s buf start len = 0
+  let write s str = ()
+  let close s = ()
+end
+      
 module SimpleTransport =
 struct
   type 'a z = 'a UnitMonad.t
-  type fd = unit
       
   type socket = {
     inc : in_channel;
@@ -69,6 +72,9 @@ struct
 
 end
 
+module XMPPClient = XMPP.Make (UnitMonad) (Xmlstream.XmlStreamIE) (IDCallback)
+open XMPPClient
+
 module LogTraffic  (T : XMPPClient.Socket)
   (L : sig val logfile : out_channel end) =
 struct
@@ -97,7 +103,12 @@ struct
     output_string L.logfile "\n";
     flush L.logfile;
     T.write s str
+
+  let close = T.close
 end
+
+let opt_try f x = try Some (f x) with Not_found -> None
+let lpair jid = (jid.lnode, jid.ldomain)
 
 module rec A : sig
   class type page_window =
@@ -201,8 +212,17 @@ let add_presence_extension ns proc =
   Hashtbl.add presence_extensions ns proc
 *)
           
-let session_handler
-    message_callback message_error presence_callback presence_error xmpp =
+class type account_window =
+object
+  method process_message : xmpp -> message_content stanza -> unit
+  method process_presence : xmpp -> presence_content stanza -> unit
+  method process_message_error : xmpp -> ?id:XMPP.id ->
+    ?jid_from:JID.t -> ?jid_to:string -> ?lang:string -> StanzaError.t -> unit
+  method process_presence_error : xmpp -> ?id:XMPP.id ->
+    ?jid_from:JID.t -> ?jid_to:string -> ?lang:string -> StanzaError.t -> unit
+end
+
+let session_handler (aw:account_window) xmpp =
   XMPPClient.register_iq_request_handler xmpp XVersion.ns_version
     XVersion.(
       iq_request
@@ -213,9 +233,11 @@ let session_handler
         })
     );
   XMPPClient.register_stanza_handler xmpp (ns_client, "message")
-    (parse_message ~callback:message_callback ~callback_error:message_error);
+    (parse_message ~callback:aw#process_message
+       ~callback_error:aw#process_message_error);
   XMPPClient.register_stanza_handler xmpp (ns_client, "presence")
-    (parse_presence ~callback:presence_callback ~callback_error:presence_error);
+    (parse_presence ~callback:aw#process_presence
+       ~callback_error:aw#process_presence_error);
   let open R in
     get xmpp (fun ?jid_from ?jid_to ?lang ?ver items ->
       List.iter (fun item ->
@@ -224,7 +246,7 @@ let session_handler
       ) items
     )
 
-let closed_session_data account =
+let create_session_data account =
   let user_data = {
     skey = "skey";
     pages = Hashtbl.create 10
@@ -235,28 +257,10 @@ let closed_session_data account =
     else
       replace_resource account.jid account.resource
   in
-  let module Pseudo_socket =
-      struct
-        type t = unit
-        let socket = ()
-        let read s buf start len = 0
-        let write s str = ()
-      end in
-    create_session_data (module Pseudo_socket : XMPPClient.Socket)
+    XMPPClient.create_session_data (module PseudoSocket : XMPPClient.Socket)
       myjid user_data
-    
-
+  
 let connect account =
-  let user_data = {
-    skey = "skey";
-    pages = Hashtbl.create 10
-  } in
-  let myjid =
-    if account.resource = "" then
-      account.jid
-    else
-      replace_resource account.jid account.resource
-  in
   let host, port =
     (if account.ip = "" then account.jid.domain else account.ip),
     (match account.port with
@@ -277,51 +281,32 @@ let connect account =
         let socket = socket_data
         include SimpleTransport
       end in
+    fd, (module PlainSocket : XMPPClient.Socket)
+
+let open_stream account session_data socket session =
   let socket_module =
     if account.rawxml_log = "" then
-      (module PlainSocket : XMPPClient.Socket)
+      socket
     else
+      let module S = (val socket : XMPPClient.Socket) in
       let module Socket_module =
           struct
-            include LogTraffic(PlainSocket)
+            include LogTraffic(S)
               (struct let logfile = open_out account.rawxml_log end)
           end in
         (module Socket_module : XMPPClient.Socket)
   in
-  let xmpp = create_session_data socket_module myjid user_data in
-    fd, xmpp
-    
-let create_parser session_data account message_callback message_error
-    presence_callback presence_error =
-  let lang = account.Grgn_config.lang in
-  let password = account.password in
-    XMPPClient.send session_data
-      (Xmlstream.stream_header session_data.ser
-         (ns_streams, "stream")
-         (make_attr "to" session_data.XMPPClient.myjid.domain ::
-            make_attr "version" "1.0" ::
-            (match lang with
-              | None -> []
-              | Some v -> [make_attr ~ns:ns_xml "lang" v]))) >>=
-      fun () ->
-     start_stream session_data
-    (* ?tls:(match tls_socket with
-       | None -> None
-       | Some socket -> Some (fun session_data ->
-       socket () >>= fun socket ->
-       session_data.socket <- socket;
-       let read buf start len =
-       let module S = (val socket : Socket) in
-       S.read S.socket buf start len
-       in
-       X.reset session_data.p (Some read);
-       return ()
-       )) *)
-       lang password
-       (session_handler message_callback message_error
-          presence_callback presence_error) >>=
-      fun () -> return (fun () ->
-        X.parse session_data.p
-          stream_start (stream_stanza session_data) stream_end)
-  
-  
+  let module S = (val socket_module : XMPPClient.Socket) in
+    session_data.socket <- socket_module;
+    let read buf start len = S.read S.socket buf start len in
+      XMPPClient.X.reset session_data.p (Some read);
+      XMPPClient.open_stream session_data
+        ?lang:account.Grgn_config.lang account.Grgn_config.password session
+
+let create_parser session_data =
+  XMPPClient.parse session_data
+
+let close session_data =
+  let module S = (val session_data.socket : XMPPClient.Socket) in
+    S.close S.socket
+

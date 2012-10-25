@@ -7,11 +7,13 @@ open GMain
 open Grgn_gtk_types
 
 open Grgn_xmpp
+open JID
+open XMPPClient
 
 let _ =
   GtkMain.Main.init ()
 
-class appwin session_data =
+class appwin account session_data =
   let window = GWindow.window ~width:400 ~height:400 () in
   let vbox = GPack.vbox ~packing:window#add () in
   let menubar = GMenu.menu_bar ~packing:vbox#pack () in
@@ -29,8 +31,7 @@ class appwin session_data =
   let notebook = GPack.notebook ~packing:vpaned#add2 () in
 
 object (self)
-  val mutable xmpp : xmpp = session_data
-  method set_xmpp x = xmpp <- x
+  val xmpp : xmpp = session_data
   method xmpp = xmpp
 
   method window = window
@@ -48,24 +49,65 @@ object (self)
 
   method send_message =
     XMPPClient.send_message xmpp
+
+  method as_appwin = (self :> Grgn_gtk_types.appwin)
+    
+  method process_message (session_data:xmpp) stanza =
+    match stanza.jid_from with
+      | None -> () (* TODO *)
+      | Some from ->
+        let p =
+          try Some (Hashtbl.find xmpp.user_data.B.pages (lpair from))
+          with Not_found -> None in
+          match p with
+            | None ->
+              let p = Grgn_gtk_ooc.start_ooc self#as_appwin from in
+                p#process_message xmpp stanza
+            | Some p ->
+              p#process_message xmpp stanza
+
+  method process_message_error xmpp ?(id:XMPP.id option) ?(jid_from:JID.t option)
+    ?(jid_to:string option) ?(lang:string option) (error:StanzaError.t) =
+    ()
+                
+  method process_presence xmpp stanza =
+    match stanza.jid_from with
+      | None -> () (* TODO *)
+      | Some jid_from ->
+        let p =
+          try Some (Hashtbl.find xmpp.user_data.B.pages (lpair jid_from))
+          with Not_found -> None in
+          match p with
+            | None -> () (* TODO *)
+            | Some p ->
+              print_endline "presence";
+              p#process_presence xmpp stanza
+
+  method process_presence_error xmpp ?id ?jid_from ?jid_to ?lang error =
+    ()
+  method xmpp_connect () =
+    let fd, socket = Grgn_xmpp.connect account in
+    let session = Grgn_xmpp.session_handler (self :> account_window) in
+      Grgn_xmpp.open_stream account self#xmpp socket session;
+      let watcher _ =
+      (* TODO modify all internal data in Glib.idle *)
+        try
+          parse session_data;
+          true
+        with
+          | End_of_file ->
+            Grgn_xmpp.close session_data;
+            false
+          | XMPPClient.X.XmlError _ ->
+            false
+          | exn ->
+            print_endline (Printexc.to_string exn);
+            true
+      in
+      let chann = GMain.Io.channel_of_descr fd in
+        ignore (GMain.Io.add_watch ~cond:[`IN] ~callback:watcher chann)
 end
 
-open XMPPClient
-open JID
-
-let message_callback appwin xmpp stanza =
-  match stanza.jid_from with
-    | None -> () (* TODO *)
-    | Some from ->
-      let p =
-        try Some (Hashtbl.find xmpp.user_data.B.pages (lpair from))
-        with Not_found -> None in
-        match p with
-          | None ->
-            let p = Grgn_gtk_ooc.start_ooc appwin from in
-              p#process_message xmpp stanza
-          | Some p ->
-            p#process_message xmpp stanza
 
 (*      
       let rec iter_x = function
@@ -90,21 +132,6 @@ let message_callback appwin xmpp stanza =
           print_endline "body"
 *)
               
-let message_error appwin xmpp ?id ?jid_from ?jid_to ?lang error =
-  ()
-
-let presence_callback appwin xmpp stanza =
-  match stanza.jid_from with
-    | None -> () (* TODO *)
-    | Some jid_from ->
-      let p =
-        try Some (Hashtbl.find xmpp.user_data.B.pages (lpair jid_from))
-        with Not_found -> None in
-        match p with
-          | None -> () (* TODO *)
-          | Some p ->
-            print_endline "presence";
-            p#process_presence xmpp stanza
 
 (*              
       let rec iter_x = function
@@ -127,31 +154,13 @@ let presence_callback appwin xmpp stanza =
         ()
 *)
               
-let presence_error appwin xmpp ?id ?jid_from ?jid_to ?lang error =
-  ()
-
 let appwin =
   let accounts = Grgn_config.get_config () in
   let account = List.hd accounts in
-  let appwin = new appwin (closed_session_data account) in
-  let fd, xmpp = Grgn_xmpp.connect account in
-    appwin#set_xmpp xmpp;
-    let parse = create_parser xmpp account
-      (message_callback (appwin :> Grgn_gtk_types.appwin)) (message_error appwin)
-      (presence_callback appwin) (presence_error appwin) in
-    let watcher _ =
-    (* TODO modify all internal data in Glib.idle *)
-      let () =
-        try
-          parse ()
-        with exn -> print_endline (Printexc.to_string exn)
-      in
-        true
-    in
-    let chann = GMain.Io.channel_of_descr fd in
-    let () = ignore (GMain.Io.add_watch ~cond:[`IN] ~callback:watcher chann) in
-      appwin
-
+  let xmpp = Grgn_xmpp.create_session_data account in
+  let appwin = new appwin account xmpp in
+    appwin#xmpp_connect ();
+    appwin
 
 let create_menu (main, menu_items) =
   let mainitem = GMenu.menu_item ~label:main () in

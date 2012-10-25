@@ -28,5 +28,12 @@ object
   
   method add_page : widget -> unit
   method add_page_window : (string * string) -> page_window -> unit
+  method process_message : xmpp -> message_content stanza -> unit
+  method process_presence : xmpp -> presence_content stanza -> unit
+  method process_message_error : xmpp -> ?id:string ->
+    ?jid_from:JID.t -> ?jid_to:string -> ?lang:string -> StanzaError.t -> unit
+  method process_presence_error : xmpp -> ?id:string ->
+    ?jid_from:JID.t -> ?jid_to:string -> ?lang:string -> StanzaError.t -> unit
+
 end
 
