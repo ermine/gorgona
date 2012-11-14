@@ -5,7 +5,7 @@ Synopsis:    XMPP/Jabber client
 Authors:     Anastasia Gornostaeva
 License:     BSD3
 LicenseFile: LICENCE
-Plugins:     DevFiles (0.2), META (0.2), StdFiles (0.2)
+Plugins:     DevFiles (0.3), META (0.3), StdFiles (0.3)
 BuildTools:  ocamlbuild
 FilesAB:     version.ml.ab
 
